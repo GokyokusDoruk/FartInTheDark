@@ -1,0 +1,44 @@
+:root { --bg: #111426; --card: #1b1f34; --line: #303650; --gold: #d7b66d; --text: #fff; --muted: #8d94ac; --green: #7bd36b; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; user-select: none; -webkit-user-select: none; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui .screen, #ui button, #ui input { pointer-events: auto; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 24px 16px; background: rgba(17, 20, 38, 0.92); overflow-y: auto; }
+.screen.clear { background: rgba(17, 20, 38, 0.55); }
+.title { font-size: clamp(34px, 10vw, 56px); font-weight: 900; line-height: 1; text-align: center; letter-spacing: -1px; }
+.title span { color: var(--green); text-shadow: 0 0 24px rgba(123, 211, 107, .6); }
+.subtitle { color: var(--muted); text-align: center; max-width: 340px; }
+.btn { appearance: none; border: 0; border-radius: 14px; padding: 14px 22px; font-size: 18px; font-weight: 800; cursor: pointer;
+  background: var(--gold); color: #111426; min-width: 220px; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--text); border: 2px solid var(--line); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; width: min(100%, 360px); display: flex; flex-direction: column; gap: 12px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { flex: 1; min-width: 38px; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); font-weight: 700; font-size: 15px; cursor: pointer; }
+.seg button.on { background: var(--gold); color: #111426; border-color: var(--gold); }
+input.name { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: #0d1020; color: var(--text); font-size: 16px; }
+label { color: var(--muted); font-size: 14px; }
+.hud-top { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 0; right: 0; display: flex; justify-content: center; gap: 8px; pointer-events: none; }
+.pill { background: rgba(27, 31, 52, .85); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 800; font-size: 15px; }
+.timer { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 44px); left: 50%; transform: translateX(-50%); font-size: 44px; font-weight: 900; pointer-events: none; text-shadow: 0 2px 10px #000; }
+.banner { position: absolute; top: 36%; left: 0; right: 0; text-align: center; font-size: clamp(30px, 10vw, 56px); font-weight: 900; pointer-events: none; text-shadow: 0 3px 16px #000; color: var(--green); }
+.skill { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.skill .name { font-weight: 800; }
+.skill .desc { color: var(--muted); font-size: 12px; }
+.bar { display: flex; gap: 2px; margin-top: 4px; }
+.bar i { width: 10px; height: 12px; border-radius: 3px; background: #2a2f4a; display: block; }
+.bar i.on { background: var(--green); }
+.bar i.new { background: var(--gold); }
+.pm { display: flex; gap: 6px; grid-row: span 3; }
+.pm button { width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: #0d1020; color: var(--text); font-size: 22px; font-weight: 900; cursor: pointer; }
+.pm button:disabled { opacity: .3; }
+table.score { width: 100%; border-collapse: collapse; }
+table.score td, table.score th { padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--line); }
+table.score td:last-child, table.score th:last-child { text-align: right; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.05); transform: translate(-50%, -50%); pointer-events: none; }
+.stick .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.35); transform: translate(-50%, -50%); }
+.hint { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; color: var(--muted); font-size: 13px; pointer-events: none; }
