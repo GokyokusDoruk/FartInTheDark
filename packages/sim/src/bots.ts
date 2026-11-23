@@ -45,8 +45,12 @@ export function botPlan(s: MatchState, id: string): PlanInput {
     const pos = walk(s, start, rng.range(0, Math.PI * 2), rng.range(0, 4));
     return { pos, aim: angleOf(sub(nearest, start)) + rng.range(-0.3, 0.3) };
   }
-  // hard: back away from the nearest enemy, then aim at it from the new position
-  const away = angleOf(sub(start, nearest)) + rng.range(-0.8, 0.8);
-  const pos = walk(s, start, away, rng.range(1.5, 4));
-  return { pos, aim: angleOf(sub(nearest, pos)) + rng.range(-0.1, 0.1) };
+  // hard: sidestep (never straight back, so clouds don't meet head-on), then lead the
+  // target: assume it also moves 1-3 m sideways from where it was last seen
+  const toEnemy = angleOf(sub(nearest, start));
+  const side = rng.next() < 0.5 ? 1 : -1;
+  const pos = walk(s, start, toEnemy + side * rng.range(1.9, 2.6), rng.range(1.5, 4));
+  const lead = rng.range(1, 3) * (rng.next() < 0.5 ? 1 : -1);
+  const guess = { x: nearest.x + Math.cos(toEnemy + Math.PI / 2) * lead, y: nearest.y + Math.sin(toEnemy + Math.PI / 2) * lead };
+  return { pos, aim: angleOf(sub(guess, pos)) };
 }

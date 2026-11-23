@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   startMatch, allocateSkills, endSkills, submitPlan, beginResolve, stepResolution, finishResolve, nextRound, winners,
-  botAllocate, botPlan, stepMove, DT, TICK_HZ, DARK_SECONDS, SKILL_SECONDS,
+  botAllocate, botPlan, stepMove, DT, TICK_HZ, DARK_SECONDS, SKILL_SECONDS, SUDDEN_DEATH_MOVE, SUDDEN_DEATH_STEP,
   type MatchState, type Vec2,
 } from '@fitd/sim';
 import type { GameScene } from '../render/scene';
@@ -165,7 +165,8 @@ export function runLocalGame(ui: HTMLElement, gs: GameScene, opts: StartOptions,
     actors.get(ME)!.view.setGlow(true);
     placeActors();
     hud.banner(null);
-    hud.hint(m.alive ? (controls.isTouch() ? T.darkHint : T.darkHintDesktop) : null);
+    const sudden = s.move >= SUDDEN_DEATH_MOVE ? T.suddenDeath(SUDDEN_DEATH_STEP * (s.move - SUDDEN_DEATH_MOVE + 1)) : null;
+    hud.hint(sudden ?? (m.alive ? (controls.isTouch() ? T.darkHint : T.darkHintDesktop) : null));
   }
 
   function updateDark(dt: number) {

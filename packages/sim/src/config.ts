@@ -10,10 +10,15 @@ export const SKILL_SECONDS = 15;
 export const DARK_SECONDS = 5;
 export const MOVE_SPEED = 3; // m/s
 export const PLAYER_RADIUS = 0.35;
-export const GAS_SPEED = 4; // m/s
+export const GAS_SPEED = 3; // m/s
 export const FLASHLIGHT_RANGE = 1; // m
 export const SHRINK_PER_MOVE = 0.98;
 export const CLASH_DAMPING = 0.5;
+/** The room stops shrinking once its shortest side reaches this (m). */
+export const MIN_ROOM_SIZE = 7;
+/** From this move of a round on, the floor poisons every survivor: SUDDEN_DEATH_STEP × (move − SUDDEN_DEATH_MOVE + 1) hp per move. Guarantees every round ends. */
+export const SUDDEN_DEATH_MOVE = 15;
+export const SUDDEN_DEATH_STEP = 10;
 
 export interface GasParams {
   radius: number; range: number; dps: number; power: number; life: number;
@@ -22,9 +27,9 @@ export interface GasParams {
 
 /** Balance curves. All tuning lives here. */
 export function gasParams(s: Stats): GasParams {
-  const dps = 20 + 5 * s.damage;
+  const dps = 35 + 6 * s.damage;
   return {
-    radius: 0.5 + 0.1 * s.thickness,
+    radius: 0.7 + 0.1 * s.thickness,
     range: 5 + 1 * s.range,
     dps,
     power: 1 + s.power,

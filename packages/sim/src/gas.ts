@@ -1,4 +1,4 @@
-import type { Cloud, Particle, Player, Room } from './types';
+import type { Cloud, Particle, Player, Room, Vec2 } from './types';
 import type { Rng } from './rng';
 import { add, sub, scale, dist, fromAngle, v, reflect, rotate, segmentHitsPoly, closestPointOnSegment, pointInPoly } from './vec';
 import { gasParams, GAS_SPEED, PLAYER_RADIUS, CLASH_DAMPING } from './config';
@@ -23,10 +23,15 @@ export function spawnCloud(p: Player, id: number, room?: Room): Cloud {
   return c;
 }
 
-function damage(players: Player[], owner: string, pos: { x: number; y: number }, r: number, amount: number) {
+/** True if a wall stands between a and b. */
+export function wallBetween(room: Room, a: Vec2, b: Vec2): boolean {
+  return room.walls.some(w => segmentHitsPoly(a, b, w, 'enter') !== null || segmentHitsPoly(b, a, w, 'enter') !== null);
+}
+
+function damage(room: Room, players: Player[], owner: string, pos: Vec2, r: number, amount: number) {
   for (const pl of players) {
     if (!pl.alive || pl.id === owner) continue;
-    if (dist(pl.pos, pos) < r + PLAYER_RADIUS) {
+    if (dist(pl.pos, pos) < r + PLAYER_RADIUS && !wallBetween(room, pos, pl.pos)) {
       pl.hp -= amount;
       if (pl.hp <= 0) { pl.hp = 0; pl.alive = false; }
     }
@@ -57,24 +62,24 @@ export function stepGas(clouds: Cloud[], particles: Particle[], room: Room, play
       n -= 1;
     }
   }
-  clash(clouds);
-  for (const c of clouds) if (c.alive) damage(players, c.owner, c.pos, c.radius, c.dps * dt);
+  clash(clouds, room);
+  for (const c of clouds) if (c.alive) damage(room, players, c.owner, c.pos, c.radius, c.dps * dt);
   for (const p of particles) {
     if (!p.alive) continue;
     p.age += dt;
     if (p.age >= p.life) { p.alive = false; continue; }
     p.pos = add(p.pos, scale(p.vel, dt));
     if (!pointInPoly(p.pos, room.bounds) || room.walls.some(w => pointInPoly(p.pos, w))) { p.alive = false; continue; }
-    damage(players, p.owner, p.pos, p.radius, p.dps * dt);
+    damage(room, players, p.owner, p.pos, p.radius, p.dps * dt);
   }
 }
 
 /** Gas-vs-gas: stronger survives with reduced damage; equal power cancels both. */
-function clash(clouds: Cloud[]) {
+function clash(clouds: Cloud[], room: Room) {
   for (let i = 0; i < clouds.length; i++) for (let j = i + 1; j < clouds.length; j++) {
     const a = clouds[i], b = clouds[j];
     if (!a.alive || !b.alive || a.owner === b.owner) continue;
-    if (dist(a.pos, b.pos) >= a.radius + b.radius) continue;
+    if (dist(a.pos, b.pos) >= a.radius + b.radius || wallBetween(room, a.pos, b.pos)) continue;
     if (a.power === b.power) { a.alive = false; b.alive = false; continue; }
     const [strong, weak] = a.power > b.power ? [a, b] : [b, a];
     weak.alive = false;

@@ -2,7 +2,7 @@ import type { Room, Vec2 } from './types';
 import type { Rng } from './rng';
 import { rotate, add, sub, scale, v, closestPointOnPoly, centroidOf } from './vec';
 import { isClear } from './roomgen';
-import { PLAYER_RADIUS, SHRINK_PER_MOVE } from './config';
+import { PLAYER_RADIUS, SHRINK_PER_MOVE, MIN_ROOM_SIZE } from './config';
 
 export function rotateRoom(room: Room, rad: number): Room {
   const c = room.center;
@@ -53,6 +53,9 @@ export function findValidPos(room: Room, p: Vec2): Vec2 {
 }
 
 export function transformForNewMove(room: Room, positions: Vec2[], rng: Rng): { room: Room; positions: Vec2[] } {
-  const next = shrinkRoom(rotateRoom(room, rng.range(0, Math.PI * 2)), SHRINK_PER_MOVE);
+  const b = room.bounds;
+  const shortest = Math.min(...b.map((p, i) => Math.hypot(b[(i + 1) % b.length].x - p.x, b[(i + 1) % b.length].y - p.y)));
+  const factor = Math.max(SHRINK_PER_MOVE, Math.min(1, MIN_ROOM_SIZE / shortest));
+  const next = shrinkRoom(rotateRoom(room, rng.range(0, Math.PI * 2)), factor);
   return { room: next, positions: positions.map(p => findValidPos(next, p)) };
 }

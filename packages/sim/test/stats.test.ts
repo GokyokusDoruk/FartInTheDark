@@ -22,5 +22,5 @@ describe('stats', () => {
     expect(a.stats.damage).toBe(10);
     expect(a.unspent).toBe(0);
   });
-  it('level-0 gas has base damage', () => expect(gasParams(emptyStats()).dps).toBe(20));
+  it('level-0 gas has base damage', () => expect(gasParams(emptyStats()).dps).toBe(35));
 });

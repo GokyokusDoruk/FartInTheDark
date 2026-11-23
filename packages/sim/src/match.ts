@@ -6,7 +6,8 @@ import { validatePlan } from './movement';
 import { emptyStats, grantPoints, allocate, autoAllocate } from './stats';
 import { createResolution, type Resolution } from './resolve';
 import { roundPoints } from './scoring';
-import { MAX_HP, ROUNDS } from './config';
+import { MAX_HP, ROUNDS, SUDDEN_DEATH_MOVE, SUDDEN_DEATH_STEP } from './config';
+import { DEATH_SEQ_SCALE } from './resolve';
 
 export type Phase = 'skills' | 'dark' | 'resolve' | 'roundEnd' | 'matchEnd';
 export interface MatchConfig { seed: number; players: { id: string; name: string; isBot: boolean; difficulty?: Difficulty }[] }
@@ -102,6 +103,14 @@ export function beginResolve(s: MatchState): void {
 
 export function finishResolve(s: MatchState): void {
   if (!s.resolution?.done) throw new Error('resolution not finished');
+  if (s.move >= SUDDEN_DEATH_MOVE) {
+    const dmg = SUDDEN_DEATH_STEP * (s.move - SUDDEN_DEATH_MOVE + 1);
+    for (const p of s.players) {
+      if (!p.alive) continue;
+      p.hp -= dmg;
+      if (p.hp <= 0) { p.hp = 0; p.alive = false; p.diedAt = s.moveSeq * DEATH_SEQ_SCALE + s.resolution.tick + 1; }
+    }
+  }
   const alive = s.players.filter(p => p.alive);
   if (alive.length <= 1) {
     const pts = roundPoints(s.players);

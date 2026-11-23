@@ -9,7 +9,7 @@ describe('gas', () => {
     const parts: Particle[] = [];
     const rng = createRng(1);
     const tick = () => stepGas(clouds, parts, empty, [A, B, C], rng, DT);
-    run(tick, 1.6);
+    run(tick, 1.8);
     expect(B.hp).toBeLessThan(100);
     expect(C.hp).toBeLessThan(100);
     expect(A.hp).toBe(100);

@@ -26,6 +26,7 @@ export const T = {
   darkHint: 'Sol: yürü · Sağ: popoyu çevir',
   darkHintDesktop: 'WASD: yürü · Fare: popoyu çevir',
   reveal: 'PIRT!',
+  suddenDeath: (dmg: number) => `Zehirli zemin! Hamle sonunda herkes -${dmg}`,
   spectating: 'İzleyici',
   roundOver: (r: number) => `${r}. Tur Bitti`,
   nextRound: 'Sonraki Tur',
