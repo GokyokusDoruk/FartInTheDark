@@ -7,3 +7,5 @@ export * from './roomgen';
 export * from './room';
 export * from './movement';
 export * from './gas';
+export * from './resolve';
+export * from './scoring';
