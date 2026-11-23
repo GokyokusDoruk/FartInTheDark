@@ -120,7 +120,7 @@ Seviye 0'da da kullanılabilir bir gaz olmalı (taban değerler). Seviye başın
 ### Değerlendirilen yaklaşımlar
 | Yaklaşım | Artı | Eksi | Karar |
 |---|---|---|---|
-| **A) Web (TypeScript + Three.js) + Capacitor + Node/Colyseus** | Site anında açılır, tek kod tabanı, hızlı geliştirme/test | Mağaza uygulaması "native" hissi biraz daha zayıf | **Seçildi** |
+| **A) Web (TypeScript + Three.js) + Capacitor + online sunucu (Faz 2'de Cloudflare Durable Objects seçildi)** | Site anında açılır, tek kod tabanı, hızlı geliştirme/test | Mağaza uygulaması "native" hissi biraz daha zayıf | **Seçildi** |
 | B) Unity (mobil + WebGL) | 3D ve mobil çok sağlam; Unity zaten kurulu | Web sürümü ağır (15–30 MB), telefon tarayıcısında takılabilir; geliştirme döngüsü yavaş | Elendi |
 | C) Godot | Ücretsiz, hafif | Web sürümü iOS Safari'de sorunlu | Elendi |
 
@@ -129,11 +129,12 @@ Seçen: kullanıcı (A).
 ### Kararlar
 - **İstemci:** TypeScript, Three.js (3D render), Vite (derleme). Dikey ekran, dokunmatik çift sanal analog; masaüstü tarayıcıda klavye/fare desteği (WASD + fare) — Claude'un kararı.
 - **Paylaşılan simülasyon:** saf TypeScript, render'dan bağımsız, sabit adımlı (tick), deterministik.
-- **Sunucu:** Node.js + Colyseus (oda, oda kodu, katılım, yeniden bağlanma).
+- **Sunucu (2026-11-23 güncellemesi, kullanıcının seçimi):** Cloudflare Workers + Durable Objects (ücretsiz plan). Her oda kodu bir Durable Object'tir; oyuncular WebSocket ile bağlanır; oda yönetimi, katılım ve yeniden bağlanma için küçük kendi protokolümüz yazılır (Colyseus kullanılmaz). Elenen: Colyseus + Fly.io/Railway (aylık ~5$, ayrı hesap, ücretsiz katmanda uyuyan sunucu).
+- **Online akış detayları (Claude'un kararı):** yetenek evresi herkes "Hazır" deyince ya da 15 sn dolunca biter; karanlık evre süresini sunucu tutar (5 sn + 1 sn ağ payı, herkes planını yollarsa erken biter); bağlantısı kopan oyuncunun hamlelerini kolay bot oynar, aynı cihazdan geri gelince kaldığı yerden devam eder; maç sürerken yeni oyuncu katılamaz; tur sonu ekranı 10 sn sonra (ya da kurucu geçince) kendiliğinden ilerler; maç bitince kurucu aynı odayla tekrar başlatabilir; odada 60 sn hiç bağlı insan kalmazsa oda kapanır.
 - **Mobil:** Capacitor ile iOS ve Android paketleri.
 - **Mac yok:** iOS derlemesi bulut macOS üzerinde yapılacak (GitHub Actions macOS runner veya Codemagic). Apple Developer hesabı (99$/yıl) ve Google Play hesabı (25$) kullanıcıya ait; mağaza yayını bu projenin ilk sürüm kapsamı dışında, ama yapı buna hazır olmalı. **İlk sürümde (Claude'un kararı):** Android için telefona doğrudan kurulabilen APK; iOS için bulut macOS'ta imzasız derleme kontrolü. TestFlight/imzalı iOS, kullanıcının Apple hesabı açıldığında ayrı iş olarak yapılır. Telefonda asıl test, sitenin telefon tarayıcısında ve Android APK'da yapılır.
 - **Web yayını:** dorukplays.com Cloudflare Pages'te barındırılıyor ve oyunlar kendi alt alan adlarında yayınlanıyor (`oyunadi.dorukplays.com`). Bu oyun **`fartinthedark.dorukplays.com`** adresinde, bu repoya bağlı ayrı bir Cloudflare Pages projesi olarak yayınlanır. Ana sayfadaki kart, dorukplays reposunun README'sindeki yöntemle eklenir.
-- **Sunucu barındırma:** küçük bir Node sunucusu (Fly.io / Railway / Render vb., ~5$/ay; sağlayıcı builder'a bırakıldı), Cloudflare DNS'te bir alt alan adıyla (öneri `fitd-server.dorukplays.com`), WSS üzerinden. Hesap açma / DNS kaydı kullanıcı tarafından yapılır.
+- **Sunucu barındırma:** dorukplays.com'un bulunduğu Cloudflare hesabında `fitd-server` adlı Worker, `fitd-server.dorukplays.com` özel alan adıyla, WSS üzerinden. `wrangler login` ve ilk yayın kullanıcı tarafından yapılır.
 - **Dil:** Arayüz Türkçe (İngilizce sonradan eklenebilecek şekilde metinler tek yerde) — Claude'un kararı.
 
 ## 8. Builder'a bırakılanlar
@@ -143,5 +144,4 @@ Seçen: kullanıcı (A).
 - Yürüme hızı, fener boyutu (~1 m ölçek referansı), ağır çekim hızı.
 - Bot yapay zekâsı detayları.
 - Ses efektleri ve müzik (absürt tonla uyumlu; telifsiz).
-- Sunucu barındırma sağlayıcısı.
 - Maç sonu puan eşitliği kuralı.
