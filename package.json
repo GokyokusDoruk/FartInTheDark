@@ -1,0 +1,9 @@
+{
+  "name": "fart-in-the-dark",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "test": "npm -w packages/sim test",
+    "dev": "npm -w apps/client run dev"
+  }
+}
