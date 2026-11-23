@@ -1,14 +1,15 @@
 import { createRng } from '@fitd/sim';
-import { RoomHost, type ServerMsg, type PlayerView } from '../src';
+import { RoomHost, type ServerMsg, type PlayerView, type HostSnapshot } from '../src';
 
-export function makeHost(seed = 7) {
-  const clock = { t: 1_000_000, advance(ms: number) { this.t += ms; host.tick(); } };
-  const rng = createRng(seed);
+export function makeHost(seed = 7, fork?: { snap: HostSnapshot; t: number; rngState: number }) {
+  const clock = { t: fork?.t ?? 1_000_000, advance(ms: number) { this.t += ms; host.tick(); } };
+  const rng = createRng(fork ? fork.rngState : seed);
   const out = new Map<string, ServerMsg[]>();
-  const host = new RoomHost({
+  const deps = {
     code: 'ABCDE', now: () => clock.t, random: rng.next,
-    send: (id, msg) => { if (!out.has(id)) out.set(id, []); out.get(id)!.push(msg); },
-  });
+    send: (id: string, msg: ServerMsg) => { if (!out.has(id)) out.set(id, []); out.get(id)!.push(msg); },
+  };
+  const host = fork ? RoomHost.restore(fork.snap, deps) : new RoomHost(deps);
   const msgs = (id: string) => out.get(id) ?? [];
   const lastView = (id: string): PlayerView => {
     const v = [...msgs(id)].reverse().find(m => m.t === 'view');
@@ -23,17 +24,19 @@ export function makeHost(seed = 7) {
     host.connected(r.id);
     return r;
   };
-  return { host, clock, out, msgs, lastView, lastError, enter };
+  /** A second host restored from this one's snapshot, sharing the same future randomness. */
+  const forkHost = () => makeHost(seed, { snap: JSON.parse(JSON.stringify(host.snapshot())), t: clock.t, rngState: rng.state() });
+  return { host, clock, out, msgs, lastView, lastError, enter, forkHost };
 }
 
 type H = ReturnType<typeof makeHost>;
 type Strategy = (id: string, v: PlayerView, step: number) => void;
 
 /** Act like an instantly-responding client for each id, once per phase instance. */
-export function respond(h: H, ids: string[], hostId: string, seen = new Map<string, string>(), step = 0, extra?: Strategy) {
+export function respond(h: H, ids: string[], hostId: string, seen = new Map<string, string>(), step = 0, extra?: Strategy, viewOf: (id: string) => PlayerView = h.lastView) {
   for (const id of ids) {
     let v: PlayerView;
-    try { v = h.lastView(id); } catch { continue; }
+    try { v = viewOf(id); } catch { continue; }
     const key = `${v.round}:${v.moveSeq}:${v.phase}`;
     if (seen.get(id) === key) continue;
     seen.set(id, key);

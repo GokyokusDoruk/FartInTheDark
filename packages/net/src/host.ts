@@ -1,16 +1,22 @@
 import {
   startMatch, allocateSkills, endSkills, submitPlan, beginResolve, runResolution, finishResolve, nextRound, winners,
-  botAllocate, botPlan, skillsPending, type Difficulty, type MatchState,
+  botAllocate, botPlan, skillsPending, createRng, type Difficulty, type MatchState,
 } from '@fitd/sim';
 import type { ClientMsg, ErrorCode, Member, PlayerView, PublicPlayer, Replay, ServerMsg } from './protocol';
 import { cleanName, CODE_ALPHABET } from './validate';
-import { DARK_MS, MAX_MEMBERS, REPLAY_TIMEOUT, ROUND_END_MS, SKILL_MS } from './timing';
+import { DARK_MS, EMPTY_CLOSE_MS, MAX_MEMBERS, REPLAY_TIMEOUT, ROUND_END_MS, SKILL_MS } from './timing';
 import { buildReplay } from './replay';
 
 export interface HostDeps { code: string; now: () => number; random: () => number; send: (memberId: string, msg: ServerMsg) => void }
 export type JoinResult = { ok: true; id: string; token: string } | { ok: false; code: ErrorCode };
 
-interface MemberRec { id: string; name: string; isBot: boolean; difficulty?: Difficulty; connected: boolean; token: string | null }
+export interface HostSnapshot {
+  v: 1; members: MemberRec[]; hostId: string; nextHuman: number; nextBot: number; isClosed: boolean;
+  deadline: number | null; phaseKey: string; replay: Replay | null; replayDone: string[]; nextRequested: boolean;
+  closeAt: number | null; match: Omit<MatchState, 'rng'> | null; rngState: number;
+}
+
+export interface MemberRec { id: string; name: string; isBot: boolean; difficulty?: Difficulty; connected: boolean; token: string | null }
 
 export class RoomHost {
   protected members: MemberRec[] = [];
@@ -24,6 +30,7 @@ export class RoomHost {
   protected replay: Replay | null = null;
   protected replayDone = new Set<string>();
   protected nextRequested = false;
+  protected closeAt: number | null = null;
 
   constructor(protected deps: HostDeps) {}
 
@@ -46,6 +53,7 @@ export class RoomHost {
     const m = this.member(id);
     if (!m || m.isBot) return;
     m.connected = true;
+    this.closeAt = null;
     if (!this.hostConnected()) this.hostId = id;
     this.deps.send(id, { t: 'welcome', you: id, token: m.token!, code: this.deps.code });
     this.broadcast();
@@ -56,7 +64,9 @@ export class RoomHost {
     if (!m || m.isBot || !m.connected) return;
     m.connected = false;
     this.passHost(id);
-    this.broadcast();
+    this.armClose();
+    // the dropped player may have been the one everybody was waiting for
+    if (!this.advance()) this.broadcast();
   }
 
   handle(id: string, msg: ClientMsg): void {
@@ -89,9 +99,45 @@ export class RoomHost {
     }
   }
 
-  tick(): void { this.advance(); }
-  nextDeadline(): number | null { return this.match && this.match.phase !== 'matchEnd' ? this.deadline : null; }
+  tick(): void {
+    if (this.isClosed) return;
+    if (this.closeAt !== null && this.deps.now() >= this.closeAt) return this.close();
+    this.advance();
+  }
+  nextDeadline(): number | null {
+    if (this.isClosed) return null;
+    const phase = this.match && this.match.phase !== 'matchEnd' ? this.deadline : null;
+    const all = [phase, this.closeAt].filter((x): x is number => x !== null);
+    return all.length ? Math.min(...all) : null;
+  }
   closed(): boolean { return this.isClosed; }
+
+  snapshot(): HostSnapshot {
+    const { rng, ...match } = this.match ?? ({} as MatchState);
+    return JSON.parse(JSON.stringify({
+      v: 1, members: this.members, hostId: this.hostId, nextHuman: this.nextHuman, nextBot: this.nextBot,
+      isClosed: this.isClosed, deadline: this.deadline, phaseKey: this.phaseKey, replay: this.replay,
+      replayDone: [...this.replayDone], nextRequested: this.nextRequested, closeAt: this.closeAt,
+      match: this.match ? match : null, rngState: this.match ? rng.state() : 0,
+    }));
+  }
+
+  static restore(snap: HostSnapshot, deps: HostDeps): RoomHost {
+    const h = new RoomHost(deps);
+    h.members = snap.members;
+    h.hostId = snap.hostId;
+    h.nextHuman = snap.nextHuman;
+    h.nextBot = snap.nextBot;
+    h.isClosed = snap.isClosed;
+    h.deadline = snap.deadline;
+    h.phaseKey = snap.phaseKey;
+    h.replay = snap.replay;
+    h.replayDone = new Set(snap.replayDone);
+    h.nextRequested = snap.nextRequested;
+    h.closeAt = snap.closeAt;
+    h.match = snap.match ? ({ ...snap.match, rng: createRng(snap.rngState) } as MatchState) : null;
+    return h;
+  }
 
   // ---- views --------------------------------------------------------------
   viewFor(id: string): PlayerView {
@@ -224,10 +270,29 @@ export class RoomHost {
   // ---- internals ----------------------------------------------------------
 
   protected leave(id: string): void {
-    if (this.inMatch()) return; // Task 4
-    this.members = this.members.filter(x => x.id !== id);
+    if (this.inMatch()) {
+      // the seat stays in the match, played by the bot logic from now on
+      const m = this.member(id)!;
+      Object.assign(m, { isBot: true, connected: true, token: null, name: `${m.name} (bot)` });
+      const p = this.match!.players.find(q => q.id === id);
+      if (p) { p.isBot = true; p.name = m.name; }
+    } else {
+      this.members = this.members.filter(x => x.id !== id);
+    }
     this.passHost(id);
-    this.broadcast();
+    this.armClose();
+    if (!this.advance()) this.broadcast();
+  }
+
+  protected armClose(): void {
+    if (this.closeAt === null && !this.members.some(m => !m.isBot && m.connected)) this.closeAt = this.deps.now() + EMPTY_CLOSE_MS;
+  }
+
+  protected close(): void {
+    this.isClosed = true;
+    this.match = null;
+    this.members = [];
+    this.deadline = this.closeAt = null;
   }
 
   protected startMatch(): void {
