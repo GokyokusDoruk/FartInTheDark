@@ -1,7 +1,11 @@
-import { startMatch, type Difficulty, type MatchState } from '@fitd/sim';
-import type { ClientMsg, ErrorCode, Member, PlayerView, ServerMsg } from './protocol';
+import {
+  startMatch, allocateSkills, endSkills, submitPlan, beginResolve, runResolution, finishResolve, nextRound, winners,
+  botAllocate, botPlan, skillsPending, type Difficulty, type MatchState,
+} from '@fitd/sim';
+import type { ClientMsg, ErrorCode, Member, PlayerView, PublicPlayer, Replay, ServerMsg } from './protocol';
 import { cleanName, CODE_ALPHABET } from './validate';
-import { MAX_MEMBERS } from './timing';
+import { DARK_MS, MAX_MEMBERS, REPLAY_TIMEOUT, ROUND_END_MS, SKILL_MS } from './timing';
+import { buildReplay } from './replay';
 
 export interface HostDeps { code: string; now: () => number; random: () => number; send: (memberId: string, msg: ServerMsg) => void }
 export type JoinResult = { ok: true; id: string; token: string } | { ok: false; code: ErrorCode };
@@ -15,6 +19,11 @@ export class RoomHost {
   protected nextBot = 1;
   protected match: MatchState | null = null;
   protected isClosed = false;
+  protected deadline: number | null = null;
+  protected phaseKey = '';
+  protected replay: Replay | null = null;
+  protected replayDone = new Set<string>();
+  protected nextRequested = false;
 
   constructor(protected deps: HostDeps) {}
 
@@ -71,8 +80,7 @@ export class RoomHost {
       case 'start': {
         if (!this.lobbyCheck(id)) return;
         if (this.members.length < 2) return this.error(id, 'needTwo');
-        this.startMatch();
-        return this.broadcast();
+        return this.startMatch();
       }
       case 'leave':
         return this.leave(id);
@@ -81,22 +89,139 @@ export class RoomHost {
     }
   }
 
-  tick(): void { /* deadlines: Task 3/4 */ }
-  nextDeadline(): number | null { return null; }
+  tick(): void { this.advance(); }
+  nextDeadline(): number | null { return this.match && this.match.phase !== 'matchEnd' ? this.deadline : null; }
   closed(): boolean { return this.isClosed; }
 
   // ---- views --------------------------------------------------------------
   viewFor(id: string): PlayerView {
+    const s = this.match;
+    const base: PlayerView = {
+      phase: 'lobby', round: 0, move: 0, moveSeq: 0, room: null, remainingMs: null, hostId: this.hostId,
+      members: this.publicMembers(), players: [], me: null, replay: null, roundHistory: [], winners: null,
+    };
+    if (!s) return base;
+    const hidden = s.phase === 'skills' || s.phase === 'dark';
+    const players: PublicPlayer[] = s.players.map(p => {
+      const m = this.member(p.id);
+      return {
+        id: p.id, name: p.name, isBot: m?.isBot ?? p.isBot, connected: m ? m.connected : false,
+        hp: p.hp, alive: p.alive, score: p.score, pos: hidden ? (s.lastSeen[p.id] ?? p.pos) : p.pos, aim: p.aim,
+      };
+    });
+    const p = s.players.find(q => q.id === id);
     return {
-      phase: this.match ? this.match.phase : 'lobby', round: this.match?.round ?? 0, move: this.match?.move ?? 0,
-      moveSeq: this.match?.moveSeq ?? 0, room: this.match?.room ?? null, remainingMs: null, hostId: this.hostId,
-      members: this.publicMembers(), players: [], me: null, replay: null,
-      roundHistory: this.match?.roundHistory ?? [], winners: null,
+      ...base,
+      phase: s.phase, round: s.round, move: s.move, moveSeq: s.moveSeq, room: s.room,
+      remainingMs: this.deadline !== null && s.phase !== 'matchEnd' ? Math.max(0, this.deadline - this.deps.now()) : null,
+      players,
+      me: p ? { id, stats: p.stats, unspent: p.unspent, start: s.moveStart[id] ?? p.pos, aim: p.aim, alive: p.alive } : null,
+      replay: s.phase === 'resolve' ? this.replay : null,
+      roundHistory: s.roundHistory,
+      winners: s.phase === 'matchEnd' ? winners(s) : null,
     };
   }
 
+  // ---- match flow ---------------------------------------------------------
+  protected matchMessage(id: string, msg: ClientMsg): void {
+    const s = this.match;
+    if (!s) return;
+    const p = s.players.find(q => q.id === id);
+    switch (msg.t) {
+      case 'skills':
+        if (s.phase !== 'skills' || !p?.alive || p.unspent <= 0) return;
+        try { allocateSkills(s, id, msg.alloc); } catch { return; }
+        break;
+      case 'plan':
+        if (s.phase !== 'dark' || !p?.alive) return;
+        submitPlan(s, id, { pos: msg.pos, aim: msg.aim });
+        break;
+      case 'replayDone':
+        if (s.phase !== 'resolve' || msg.moveSeq !== s.moveSeq) return;
+        this.replayDone.add(id);
+        break;
+      case 'next':
+        if (s.phase !== 'roundEnd' || id !== this.hostId) return;
+        this.nextRequested = true;
+        break;
+      default:
+        return;
+    }
+    this.advance();
+  }
+
+  /** Enter new phases and leave finished ones until nothing is left to do; broadcasts on change. */
+  protected advance(): boolean {
+    let changed = false;
+    for (let guard = 0; guard < 64 && this.match; guard++) {
+      const s = this.match;
+      const key = `${s.round}:${s.moveSeq}:${s.phase}`;
+      if (key !== this.phaseKey) { this.phaseKey = key; this.enter(s); changed = true; }
+      if (!this.leaveIfDone(s)) break;
+    }
+    if (changed) this.broadcast();
+    return changed;
+  }
+
+  protected enter(s: MatchState): void {
+    const now = this.deps.now();
+    if (s.phase === 'skills') {
+      for (const p of s.players) {
+        if (p.alive && p.unspent > 0 && !this.liveHuman(p.id)) allocateSkills(s, p.id, botAllocate(s, p.id));
+      }
+      this.deadline = now + SKILL_MS;
+    } else if (s.phase === 'dark') {
+      this.deadline = now + DARK_MS;
+    } else if (s.phase === 'roundEnd') {
+      this.nextRequested = false;
+      this.deadline = now + ROUND_END_MS;
+    } else if (s.phase === 'matchEnd') {
+      this.deadline = null;
+    }
+  }
+
+  /** Returns true when the match moved on to another phase. */
+  protected leaveIfDone(s: MatchState): boolean {
+    const now = this.deps.now();
+    const late = this.deadline !== null && now >= this.deadline;
+    switch (s.phase) {
+      case 'skills':
+        if (!late && skillsPending(s).some(id => this.liveHuman(id))) return false;
+        endSkills(s);
+        return true;
+      case 'dark': {
+        if (!late && s.players.some(p => p.alive && this.liveHuman(p.id) && !s.plans[p.id])) return false;
+        for (const p of s.players) if (p.alive && !this.liveHuman(p.id) && !s.plans[p.id]) submitPlan(s, p.id, botPlan(s, p.id));
+        beginResolve(s);
+        const r = buildReplay(s);
+        runResolution(s.resolution!, s.room, s.players, s.rng);
+        r.ticks = s.resolution!.tick;
+        r.after = s.players.map(p => ({ id: p.id, hp: p.hp, alive: p.alive, diedAt: p.diedAt, score: p.score }));
+        this.replay = r;
+        this.replayDone.clear();
+        this.deadline = now + REPLAY_TIMEOUT(r.ticks);
+        return true;
+      }
+      case 'resolve':
+        if (!late && this.members.some(m => this.liveHuman(m.id) && !this.replayDone.has(m.id))) return false;
+        finishResolve(s);
+        return true;
+      case 'roundEnd':
+        if (!late && !this.nextRequested) return false;
+        nextRound(s);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /** A connected human controls this player; anyone else is played by the bot logic. */
+  protected liveHuman(id: string): boolean {
+    const m = this.member(id);
+    return !!m && !m.isBot && m.connected;
+  }
+
   // ---- internals ----------------------------------------------------------
-  protected matchMessage(_id: string, _msg: ClientMsg): void { /* Task 3 */ }
 
   protected leave(id: string): void {
     if (this.inMatch()) return; // Task 4
@@ -110,6 +235,9 @@ export class RoomHost {
       seed: Math.floor(this.deps.random() * 2 ** 32),
       players: this.members.map(m => ({ id: m.id, name: m.name, isBot: m.isBot, difficulty: m.difficulty })),
     });
+    this.phaseKey = '';
+    this.replay = null;
+    this.advance();
   }
 
   protected inMatch(): boolean { return !!this.match && this.match.phase !== 'matchEnd'; }
