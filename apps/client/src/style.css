@@ -42,3 +42,4 @@ table.score td:last-child, table.score th:last-child { text-align: right; }
 .stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); background: rgba(255,255,255,.05); transform: translate(-50%, -50%); pointer-events: none; }
 .stick .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.35); transform: translate(-50%, -50%); }
 .hint { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+.net-status { display: none; position: absolute; top: max(54px, calc(env(safe-area-inset-top) + 48px)); left: 50%; transform: translateX(-50%); background: #5a1d24; color: #ffd6d6; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; z-index: 5; }

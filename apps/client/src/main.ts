@@ -1,6 +1,7 @@
 import { showMenu } from './ui/menu';
 import { createScene } from './render/scene';
-import { runLocalGame } from './game/localGame';
+import { runGame } from './game/play';
+import { createLocalTransport } from './net/localTransport';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ui = document.getElementById('ui') as HTMLElement;
@@ -14,6 +15,6 @@ const menu = () => {
   ui.innerHTML = '';
   gs.resize();
   gs.render();
-  showMenu(ui, opts => { ui.innerHTML = ''; runLocalGame(ui, gs, opts, menu); });
+  showMenu(ui, opts => { ui.innerHTML = ''; runGame(ui, gs, createLocalTransport(opts), { onMenu: menu }); });
 };
 menu();

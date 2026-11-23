@@ -1,11 +1,11 @@
 import type { Difficulty } from '@fitd/sim';
 import { T } from './strings';
+import { esc } from './esc';
 
 export interface StartOptions { name: string; bots: number; difficulty: Difficulty }
 
 const load = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
-const esc = (s: string) => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 
 export function showMenu(root: HTMLElement, onStart: (opts: StartOptions) => void): void {
   root.innerHTML = `

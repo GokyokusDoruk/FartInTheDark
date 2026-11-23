@@ -147,12 +147,12 @@ export class RoomHost {
       members: this.publicMembers(), players: [], me: null, replay: null, roundHistory: [], winners: null,
     };
     if (!s) return base;
-    const hidden = s.phase === 'skills' || s.phase === 'dark';
+    // p.pos/p.aim only ever hold revealed values: plans live in s.plans until beginResolve
     const players: PublicPlayer[] = s.players.map(p => {
       const m = this.member(p.id);
       return {
         id: p.id, name: p.name, isBot: m?.isBot ?? p.isBot, connected: m ? m.connected : false,
-        hp: p.hp, alive: p.alive, score: p.score, pos: hidden ? (s.lastSeen[p.id] ?? p.pos) : p.pos, aim: p.aim,
+        hp: p.hp, alive: p.alive, score: p.score, pos: p.pos, aim: p.aim,
       };
     });
     const p = s.players.find(q => q.id === id);
