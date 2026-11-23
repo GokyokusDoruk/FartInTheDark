@@ -132,7 +132,7 @@ function enterRoom(ui: HTMLElement, gs: GameScene, code: string, name: string, o
               ${m.id === v.hostId ? `<span class="tag host">${T.hostTag}</span>` : ''}
               ${m.isBot ? `<span class="tag">${T.diff[m.difficulty ?? 'easy']}</span>` : ''}
               ${!m.isBot && !m.connected ? `<span class="tag off">${T.offline}</span>` : ''}
-              ${host && m.isBot ? `<button class="x" data-rm="${esc(m.id)}" aria-label="${T.removeBot}">×</button>` : ''}
+              ${host && (m.isBot || !m.connected) ? `<button class="x" data-rm="${esc(m.id)}" aria-label="${T.removeBot}">×</button>` : ''}
             </li>`).join('')}
           </ul>
           ${host ? `

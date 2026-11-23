@@ -16,6 +16,7 @@ import { showSkills } from '../ui/skills';
 import { createHud, showRoundEnd, showMatchEnd } from '../ui/hud';
 import { T } from '../ui/strings';
 import type { Transport } from '../net/transport';
+import { blocksGame, overlayKey } from './linkState';
 
 const SPECTATOR_DARK = 1.5;
 type ClientPhase = 'wait' | 'skills' | 'dark' | 'reveal' | 'idle';
@@ -112,11 +113,34 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
   // ---- incoming -----------------------------------------------------------
   transport.onMessage(msg => {
     if (disposed) return;
-    if (msg.t === 'welcome') me = msg.you;
-    else if (msg.t === 'error') hud.hint(T.errors[msg.code] ?? msg.code);
-    else { queue.push(msg.view); pump(); }
+    if (msg.t === 'welcome') { me = msg.you; hideBlock(); }
+    else if (msg.t === 'error') {
+      if (blocksGame({ error: msg.code })) showBlock(T.errors[msg.code] ?? msg.code, false);
+      else hud.hint(T.errors[msg.code] ?? msg.code);
+    } else { queue.push(msg.view); pump(); }
   });
-  transport.onStatus?.(s => hud.status(s === 'online' ? null : s === 'reconnecting' ? T.reconnecting : T.connectionLost));
+  transport.onStatus?.(s => {
+    hud.status(s === 'online' ? null : s === 'reconnecting' ? T.reconnecting : T.connectionLost);
+    if (blocksGame({ status: s })) showBlock(T.connectionLost, !!transport.retry);
+    else if (s === 'online') hideBlock();
+  });
+
+  // a lost link / closed room: never leave the player on a dead screen
+  let block: HTMLElement | null = null;
+  function showBlock(text: string, canRetry: boolean) {
+    hideBlock();
+    block = document.createElement('div');
+    block.className = 'screen clear';
+    block.style.zIndex = '20';
+    block.innerHTML = `<div class="title" style="font-size:26px">${text}</div>
+      ${canRetry ? `<button class="btn" data-a="retry">${T.retry}</button>` : ''}
+      <button class="btn ghost" data-a="menu">${T.menu}</button>`;
+    ui.appendChild(block);
+    const r = block.querySelector<HTMLButtonElement>('[data-a=retry]');
+    if (r) r.onclick = () => { hideBlock(); hud.status(T.reconnecting); transport.retry?.(); };
+    block.querySelector<HTMLButtonElement>('[data-a=menu]')!.onclick = () => { transport.send({ t: 'leave' }); destroy(); cb.onMenu(); };
+  }
+  function hideBlock() { block?.remove(); block = null; }
 
   function pump() {
     while (!busy && queue.length && !disposed) {
@@ -124,9 +148,11 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
       if (v.phase === 'lobby') continue;
       const key = `${v.round}:${v.moveSeq}:${v.phase}`;
       const fresh = key !== curKey;
+      // e.g. the host left at match end: the new host needs the buttons now
+      const redraw = !fresh && !!cur && overlayKey(cur, me) !== overlayKey(v, me);
       cur = v;
       curKey = key;
-      if (fresh) enter(v);
+      if (fresh || redraw) enter(v);
     }
   }
 
@@ -342,6 +368,7 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
     disposed = true;
     cancelAnimationFrame(raf);
     closeOverlay?.();
+    hideBlock();
     controls.destroy();
     hud.destroy();
     transport.close();

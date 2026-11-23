@@ -85,14 +85,17 @@ export class RoomHost {
       }
       case 'removeBot': {
         if (!this.lobbyCheck(id)) return;
-        const i = this.members.findIndex(x => x.id === msg.id && x.isBot);
+        // bots, and humans whose connection is gone (a closed tab never comes back)
+        const i = this.members.findIndex(x => x.id === msg.id && (x.isBot || !x.connected));
         if (i < 0) return;
         this.members.splice(i, 1);
         return this.broadcast();
       }
       case 'start': {
         if (!this.lobbyCheck(id)) return;
-        if (this.members.length < 2) return this.error(id, 'needTwo');
+        // seats of humans who are gone are not carried into the match
+        this.members = this.members.filter(x => x.isBot || x.connected);
+        if (this.members.length < 2) { this.error(id, 'needTwo'); return this.broadcast(); }
         return this.startMatch();
       }
       case 'leave':
@@ -320,10 +323,10 @@ export class RoomHost {
     if (this.hostId !== leaving && this.hostConnected()) return;
     const next = this.members.find(x => !x.isBot && x.connected && x.id !== leaving);
     if (next) this.hostId = next.id;
-    else if (!this.members.some(x => x.id === this.hostId)) this.hostId = this.members.find(x => !x.isBot)?.id ?? '';
+    else if (!this.members.some(x => x.id === this.hostId && !x.isBot)) this.hostId = this.members.find(x => !x.isBot)?.id ?? '';
   }
 
-  protected hostConnected(): boolean { return !!this.members.find(x => x.id === this.hostId && x.connected); }
+  protected hostConnected(): boolean { return !!this.members.find(x => x.id === this.hostId && !x.isBot && x.connected); }
   protected member(id: string) { return this.members.find(x => x.id === id); }
   protected publicMembers(): Member[] {
     return this.members.map(({ id, name, isBot, difficulty, connected }) => ({ id, name, isBot, ...(difficulty ? { difficulty } : {}), connected }));

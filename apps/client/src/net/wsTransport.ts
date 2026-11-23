@@ -25,6 +25,8 @@ export function connectRoom(code: string, name: string, deps: { WebSocket?: type
   let ws: WebSocket;
   let listener: ((m: ServerMsg) => void) | null = null;
   const buffer: ServerMsg[] = [];
+  /** sent while the socket was down; flushed on the next open (the server ignores stale ones) */
+  const outbox: string[] = [];
   let statusCb: ((s: LinkStatus) => void) | null = null;
   let attempts = 0;
   let closed = false;
@@ -34,11 +36,17 @@ export function connectRoom(code: string, name: string, deps: { WebSocket?: type
   const status = (s: LinkStatus) => statusCb?.(s);
   const deliver = (m: ServerMsg) => { if (listener) listener(m); else buffer.push(m); };
 
+  let gen = 0;
   const open = () => {
     if (closed) return;
+    gen++;
     const token = get();
     ws = new WS(`${wsUrl()}/api/rooms/${code}/ws?name=${encodeURIComponent(name)}${token ? `&token=${encodeURIComponent(token)}` : ''}`);
-    ws.onopen = () => { attempts = 0; status('online'); };
+    ws.onopen = () => {
+      attempts = 0;
+      status('online');
+      while (outbox.length && ws.readyState === 1) ws.send(outbox.shift()!);
+    };
     ws.onmessage = ev => {
       let m: ServerMsg;
       try { m = JSON.parse(String(ev.data)); } catch { return; }
@@ -51,25 +59,38 @@ export function connectRoom(code: string, name: string, deps: { WebSocket?: type
       if (closed || fatal) return;
       if (attempts >= BACKOFF.length) { status('lost'); return; }
       status('reconnecting');
-      later(open, BACKOFF[attempts++]);
+      const g = gen;
+      later(() => { if (g === gen) open(); }, BACKOFF[attempts++]);
     };
   };
   open();
+  // phones suspend sockets while locked; coming back should not wait out the backoff
+  const onVisible = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') api.retry!(); };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
 
-  return {
+  const api: Transport = {
     send(msg: ClientMsg) {
       if (msg.t === 'leave') left = true;
-      if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+      const data = JSON.stringify(msg);
+      if (ws.readyState === 1) ws.send(data);
+      else if (!closed && outbox.length < 32) outbox.push(data);
     },
     onMessage(cb) {
       listener = cb;
       while (buffer.length) cb(buffer.shift()!);
     },
     onStatus(cb) { statusCb = cb; },
+    retry() {
+      if (closed || fatal || ws.readyState === 0 || ws.readyState === 1) return;
+      attempts = 0;
+      open();
+    },
     close() {
       closed = true;
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
       if (left) put(null);
       try { ws.close(); } catch { /* already closed */ }
     },
   };
+  return api;
 }

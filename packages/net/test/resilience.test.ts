@@ -125,4 +125,48 @@ describe('RoomHost resilience', () => {
     }
     expect([...phases].sort()).toEqual(expect.arrayContaining(['dark', 'resolve', 'skills']));
   });
+
+  it('the host role never sticks to a leaver turned bot', () => {
+    const { h, a, b } = inDark();
+    h.host.disconnected(b.id);
+    h.host.handle(a.id, { t: 'leave' });
+    h.host.join('B', b.token);
+    h.host.connected(b.id);
+    expect(h.lastView(b.id).hostId).toBe(b.id);
+  });
+});
+
+describe('RoomHost lobby hygiene', () => {
+  it('the host can remove an offline human from the lobby, not an online one', () => {
+    const h = makeHost();
+    const a = h.enter('A');
+    const b = h.enter('B');
+    const c = h.enter('C');
+    h.host.disconnected(b.id);
+    h.host.handle(a.id, { t: 'removeBot', id: c.id });
+    expect(h.lastView(a.id).members).toHaveLength(3);
+    h.host.handle(a.id, { t: 'removeBot', id: b.id });
+    expect(h.lastView(a.id).members.map(m => m.id)).toEqual([a.id, c.id]);
+  });
+
+  it('offline humans are dropped from the lobby when the match starts', () => {
+    const h = makeHost();
+    const a = h.enter('A');
+    const b = h.enter('B');
+    h.enter('C');
+    h.host.disconnected(b.id);
+    h.host.handle(a.id, { t: 'start' });
+    const v = h.lastView(a.id);
+    expect(v.phase).toBe('skills');
+    expect(v.players.map(p => p.name)).toEqual(['A', 'C']);
+  });
+
+  it('start still needs two after dropping offline humans', () => {
+    const h = makeHost();
+    const a = h.enter('A');
+    const b = h.enter('B');
+    h.host.disconnected(b.id);
+    h.host.handle(a.id, { t: 'start' });
+    expect(h.lastError(a.id)).toBe('needTwo');
+  });
 });

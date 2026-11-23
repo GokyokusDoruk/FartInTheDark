@@ -114,4 +114,38 @@ describe('connectRoom', () => {
     t.onMessage(m => got.push(m));
     expect(got).toHaveLength(1);
   });
+
+  it('queues messages while reconnecting and sends them once open', () => {
+    const s = setup();
+    s.ws().open();
+    s.ws().drop();
+    s.t.send({ t: 'plan', pos: { x: 1, y: 2 }, aim: 0 });
+    s.runTimer();
+    expect(s.ws().sent).toEqual([]);
+    s.ws().open();
+    expect(s.ws().sent).toEqual(['{"t":"plan","pos":{"x":1,"y":2},"aim":0}']);
+  });
+
+  it('retry() starts over after the link was lost', () => {
+    const s = setup();
+    s.ws().open();
+    s.ws().drop();
+    for (let i = 0; i < 5; i++) { s.runTimer(); s.ws().drop(); }
+    expect(s.statuses[s.statuses.length - 1]).toBe('lost');
+    const before = FakeWS.all.length;
+    s.t.retry!();
+    expect(FakeWS.all.length).toBe(before + 1);
+    s.ws().open();
+    expect(s.statuses[s.statuses.length - 1]).toBe('online');
+  });
+
+  it('a retry during backoff does not open a second socket when the timer fires', () => {
+    const s = setup();
+    s.ws().open();
+    s.ws().drop();
+    s.t.retry!();
+    const n = FakeWS.all.length;
+    s.runTimer();
+    expect(FakeWS.all.length).toBe(n);
+  });
 });
