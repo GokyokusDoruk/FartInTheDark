@@ -4,3 +4,5 @@ export * from './rng';
 export * from './config';
 export * from './stats';
 export * from './roomgen';
+export * from './room';
+export * from './movement';
