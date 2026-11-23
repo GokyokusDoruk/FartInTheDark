@@ -6,3 +6,4 @@ export * from './stats';
 export * from './roomgen';
 export * from './room';
 export * from './movement';
+export * from './gas';
