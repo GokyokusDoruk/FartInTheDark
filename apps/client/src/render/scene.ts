@@ -74,7 +74,7 @@ export function createScene(canvas: HTMLCanvasElement): GameScene {
     renderer, scene, camera,
     setLight(level) {
       const l = Math.max(0, Math.min(1, level));
-      hemi.intensity = 0.02 + 1.4 * l;
+      hemi.intensity = 1.4 * l;
       sun.intensity = 1.6 * l;
       (scene.background as THREE.Color).copy(DARK_BG).lerp(LIT_BG, l);
     },

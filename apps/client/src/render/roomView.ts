@@ -70,7 +70,7 @@ export function buildRoom(room: Room): THREE.Group {
       a.clone().setY(0.3), a.clone().setY(h * 0.8), mid.clone().setY(h), c.clone().setY(h * 0.8), c.clone().setY(0.3),
     ]);
     group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.16, 12, false), metal));
-    for (const [pt, color] of [[a, 0x222222], [c, 0x222222]] as const) {
+    for (const [pt, color] of [[a, 0x050505], [c, 0x050505]] as const) {
       const mouth = new THREE.Mesh(new THREE.CylinderGeometry(p.radius, p.radius, 0.3, 24, 1, true), metal);
       mouth.position.copy(pt).setY(0.15);
       group.add(mouth);
@@ -93,7 +93,7 @@ export function buildRoom(room: Room): THREE.Group {
     );
     disc.position.copy(toW(z.center, 0.01));
     group.add(disc);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(z.radius * 0.92, z.radius, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color }));
+    const ring = new THREE.Mesh(new THREE.RingGeometry(z.radius * 0.92, z.radius, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 }));
     ring.position.copy(toW(z.center, 0.015));
     group.add(ring);
     const icon = new THREE.Mesh(
@@ -106,6 +106,16 @@ export function buildRoom(room: Room): THREE.Group {
     group.add(icon);
   }
   return group;
+}
+
+/** In the dark nothing in the room may glow; only lights (flashlight) reveal it. */
+export function setRoomDark(group: THREE.Object3D, dark: boolean) {
+  group.traverse(o => {
+    const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+    if (!mat || !('emissiveIntensity' in mat)) return;
+    if (o.userData.glow === undefined) o.userData.glow = mat.emissiveIntensity;
+    mat.emissiveIntensity = dark ? 0 : o.userData.glow;
+  });
 }
 
 export function disposeGroup(g: THREE.Object3D) {
