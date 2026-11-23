@@ -80,6 +80,13 @@ describe('RoomHost resilience', () => {
     expect(h.host.nextDeadline()).toBeNull();
   });
 
+  it('a room nobody ever joins closes after 60 s', () => {
+    const h = makeHost();
+    expect(h.host.nextDeadline()).toBe(h.clock.t + EMPTY_CLOSE_MS);
+    h.clock.advance(EMPTY_CLOSE_MS);
+    expect(h.host.closed()).toBe(true);
+  });
+
   it('nextDeadline includes the empty-room close', () => {
     const h = makeHost();
     const a = h.enter('A');

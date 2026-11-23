@@ -1,0 +1,14 @@
+{
+  "name": "@fitd/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --ip 127.0.0.1 --port 8787",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p .",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": { "@fitd/net": "0.1.0", "@fitd/sim": "0.1.0" },
+  "devDependencies": { "@cloudflare/workers-types": "5.20261108.1", "typescript": "5.6.3", "wrangler": "4.158.0" }
+}

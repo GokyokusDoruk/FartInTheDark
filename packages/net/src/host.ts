@@ -32,7 +32,10 @@ export class RoomHost {
   protected nextRequested = false;
   protected closeAt: number | null = null;
 
-  constructor(protected deps: HostDeps) {}
+  constructor(protected deps: HostDeps) {
+    // a room nobody ever connects to closes like an abandoned one
+    this.closeAt = deps.now() + EMPTY_CLOSE_MS;
+  }
 
   // ---- membership ---------------------------------------------------------
   join(name: unknown, token?: string): JoinResult {
