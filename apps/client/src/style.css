@@ -43,3 +43,14 @@ table.score td:last-child, table.score th:last-child { text-align: right; }
 .stick .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.35); transform: translate(-50%, -50%); }
 .hint { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: 0; right: 0; text-align: center; color: var(--muted); font-size: 13px; pointer-events: none; }
 .net-status { display: none; position: absolute; top: max(54px, calc(env(safe-area-inset-top) + 48px)); left: 50%; transform: translateX(-50%); background: #5a1d24; color: #ffd6d6; border-radius: 999px; padding: 6px 14px; font-weight: 700; font-size: 13px; z-index: 5; }
+.room-code { font-size: 46px; font-weight: 900; letter-spacing: 8px; color: var(--gold); text-align: center; font-variant-numeric: tabular-nums; }
+.err { min-height: 18px; color: #ff9f9f; font-size: 14px; text-align: center; }
+input.code { text-transform: uppercase; letter-spacing: 4px; font-weight: 800; text-align: center; }
+ul.members { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+ul.members li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+ul.members .mname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+ul.members .tag { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--muted); }
+ul.members .tag.host { background: #3d3414; color: #ffd166; }
+ul.members .tag.off { background: #4a1f25; color: #ff9f9f; }
+ul.members .x { appearance: none; border: 0; background: transparent; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; padding: 0 6px; }
+.btn.small { padding: 10px 16px; font-size: 15px; margin-top: 8px; }
