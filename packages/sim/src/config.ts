@@ -13,6 +13,8 @@ export const PLAYER_RADIUS = 0.35;
 export const GAS_SPEED = 3; // m/s
 export const FLASHLIGHT_RANGE = 1; // m
 export const SHRINK_PER_MOVE = 0.98;
+/** Each wall bounce multiplies damage and the remaining range by this. */
+export const BOUNCE_DAMPING = 0.5;
 export const CLASH_DAMPING = 0.5;
 /** The room stops shrinking once its shortest side reaches this (m). */
 export const MIN_ROOM_SIZE = 7;

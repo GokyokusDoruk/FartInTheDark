@@ -63,6 +63,8 @@ export const T = {
   reconnecting: 'Bağlantı koptu, yeniden bağlanılıyor…',
   connectionLost: 'Sunucuya ulaşılamadı.',
   retry: 'Tekrar Dene',
+  loading: 'Yükleniyor…',
+  loadFailed: 'Oyun dosyaları yüklenemedi.',
   matchOver: 'Maç Bitti',
   winner: (n: string) => `Kazanan: ${n}`,
   winners: (n: string) => `Kazananlar: ${n}`,

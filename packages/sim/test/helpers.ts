@@ -8,7 +8,7 @@ export function run(fn: () => void, seconds: number) {
   const n = Math.round(seconds / DT);
   for (let i = 0; i < n; i++) fn();
 }
-export const empty: Room = { center: v(7, 10), bounds: rectPoly(0, 0, 14, 20), walls: [], pipes: [], zones: [] };
+export const empty: Room = { center: v(7, 10), bounds: rectPoly(0, 0, 14, 20), walls: [] };
 export function aimAtOther(s: MatchState, p: Player): number {
   const o = s.players.find(q => q.alive && q.id !== p.id);
   return o ? angleOf(sub(o.pos, p.pos)) : p.aim;

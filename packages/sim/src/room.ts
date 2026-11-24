@@ -11,8 +11,6 @@ export function rotateRoom(room: Room, rad: number): Room {
     center: c,
     bounds: room.bounds.map(r),
     walls: room.walls.map(w => w.map(r)),
-    pipes: room.pipes.map(p => ({ ...p, inlet: r(p.inlet), outlet: r(p.outlet), outDir: rotate(p.outDir, rad) })),
-    zones: room.zones.map(z => ({ ...z, center: r(z.center) })),
   };
 }
 
@@ -23,8 +21,6 @@ export function shrinkRoom(room: Room, factor: number): Room {
     center: c,
     bounds: room.bounds.map(s),
     walls: room.walls.map(w => w.map(s)),
-    pipes: room.pipes.map(p => ({ ...p, inlet: s(p.inlet), outlet: s(p.outlet) })),
-    zones: room.zones.map(z => ({ ...z, center: s(z.center) })),
   };
 }
 

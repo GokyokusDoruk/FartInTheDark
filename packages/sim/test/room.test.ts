@@ -8,7 +8,7 @@ describe('room transforms', () => {
     const r90 = rotateRoom(room, Math.PI / 2);
     expect(len(sub(r90.walls[0][0], room.center))).toBeCloseTo(len(sub(room.walls[0][0], room.center)));
     expect(r90.walls[0][0]).not.toEqual(room.walls[0][0]);
-    expect(len(sub(r90.pipes[0].inlet, room.center))).toBeCloseTo(len(sub(room.pipes[0].inlet, room.center)));
+    expect(len(sub(r90.walls[0][0], room.center))).toBeCloseTo(len(sub(room.walls[0][0], room.center)));
   });
   it('shrinks towards the center', () => {
     const s = shrinkRoom(room, 0.5);

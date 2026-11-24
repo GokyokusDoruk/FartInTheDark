@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createRng, generateRoom, stepMove, validatePlan, rectPoly, isClear, DT, MOVE_SPEED, DARK_SECONDS, PLAYER_RADIUS, type Room } from '../src';
 
 const base = generateRoom(createRng(3));
-const empty: Room = { ...base, walls: [], pipes: [], zones: [] };
+const empty: Room = { ...base, walls: [] };
 
 describe('movement', () => {
   it('walks at MOVE_SPEED', () => {

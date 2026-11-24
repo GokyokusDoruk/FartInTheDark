@@ -1,7 +1,7 @@
 import type { Cloud, Particle, Player, Room, Vec2 } from './types';
 import type { Rng } from './rng';
-import { add, sub, scale, dist, fromAngle, v, reflect, rotate, segmentHitsPoly, closestPointOnSegment, pointInPoly } from './vec';
-import { gasParams, GAS_SPEED, PLAYER_RADIUS, CLASH_DAMPING } from './config';
+import { add, sub, scale, dist, fromAngle, v, reflect, segmentHitsPoly, pointInPoly } from './vec';
+import { gasParams, GAS_SPEED, PLAYER_RADIUS, CLASH_DAMPING, BOUNCE_DAMPING } from './config';
 import { emptyStats } from './stats';
 
 export const PARTICLE_SPEED = 1.5;
@@ -15,7 +15,7 @@ export function spawnCloud(p: Player, id: number, room?: Room): Cloud {
   const c: Cloud = {
     id, owner: p.id, pos: p.pos, dir,
     radius: g.radius, dps: g.dps, power: g.power, travelled: 0, range: g.range,
-    age: 0, life: g.life, alive: true, touched: [], pipeCooldown: 0,
+    age: 0, life: g.life, alive: true,
   };
   const offset = PLAYER_RADIUS + g.radius;
   if (room) sweep(c, offset, room);
@@ -43,12 +43,10 @@ export function stepGas(clouds: Cloud[], particles: Particle[], room: Room, play
   for (const c of clouds) {
     if (!c.alive) continue;
     c.age += dt;
-    c.pipeCooldown = Math.max(0, c.pipeCooldown - dt);
     if (c.age >= c.life) { c.alive = false; continue; }
     const step = Math.min(GAS_SPEED * dt, c.range - c.travelled);
     if (step > 0) {
-      moveCloud(c, step, room);
-      c.travelled += step;
+      c.travelled += sweep(c, step, room);
     }
     const g = gasParams(players.find(p => p.id === c.owner)?.stats ?? emptyStats());
     let n = g.particlesPerSec * dt;
@@ -89,9 +87,13 @@ function clash(clouds: Cloud[], room: Room) {
 
 const EPS = 1e-4;
 
-/** Moves the cloud centre `step` metres, bouncing off walls and bounds (max 3 bounces). */
-function sweep(c: Cloud, step: number, room: Room): void {
+/**
+ * Moves the cloud centre `step` metres, bouncing off walls and bounds (max 3 bounces per step).
+ * Every bounce halves the cloud's damage and what is left of its range.
+ */
+function sweep(c: Cloud, step: number, room: Room): number {
   let left = step;
+  let done = 0;
   for (let bounce = 0; bounce <= 3 && left > 0; bounce++) {
     const a = c.pos, b = add(a, scale(c.dir, left));
     let hit = segmentHitsPoly(a, b, room.bounds, 'exit');
@@ -99,33 +101,15 @@ function sweep(c: Cloud, step: number, room: Room): void {
       const h = segmentHitsPoly(a, b, w, 'enter');
       if (h && (!hit || h.t < hit.t)) hit = h;
     }
-    if (!hit) { c.pos = b; return; }
+    if (!hit) { c.pos = b; return done + left; }
     c.pos = add(add(a, scale(sub(b, a), hit.t)), scale(hit.normal, EPS));
     c.dir = reflect(c.dir, hit.normal);
-    left *= 1 - hit.t;
+    const moved = left * hit.t;
+    done += moved;
+    const travelledAtHit = c.travelled + done;
+    c.range = travelledAtHit + (c.range - travelledAtHit) * BOUNCE_DAMPING;
+    c.dps *= BOUNCE_DAMPING;
+    left = Math.max(0, Math.min(left - moved, c.range - travelledAtHit));
   }
-}
-
-/** Moves a cloud forward, then applies pipes and zones along the way. */
-export function moveCloud(c: Cloud, step: number, room: Room): void {
-  const from = c.pos;
-  sweep(c, step, room);
-  if (c.pipeCooldown <= 0) {
-    for (const p of room.pipes) {
-      if (dist(closestPointOnSegment(p.inlet, from, c.pos), p.inlet) < p.radius) {
-        c.pos = p.outlet;
-        c.dir = p.outDir;
-        c.pipeCooldown = 0.3;
-        break;
-      }
-    }
-  }
-  room.zones.forEach((z, i) => {
-    const key = 'z' + i;
-    if (c.touched.includes(key) || dist(c.pos, z.center) >= z.radius) return;
-    c.touched.push(key);
-    if (z.kind === 'grow') { c.radius *= 1.5; c.dps *= 1.3; }
-    else if (z.kind === 'shrink') { c.radius *= 0.6; c.dps *= 0.7; }
-    else c.dir = rotate(c.dir, z.turn ?? 0);
-  });
+  return done;
 }

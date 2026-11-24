@@ -28,34 +28,31 @@ describe('gas interactions', () => {
     stepGas([c], [], thin, [], createRng(1), 0.5);
     expect(c.pos.x).toBeLessThan(6);
   });
-  it('travels through a pipe', () => {
-    const room = { ...empty, pipes: [{ inlet: { x: 5, y: 10 }, outlet: { x: 2, y: 8 }, outDir: { x: 0, y: -1 }, radius: 0.5 }] };
-    const c = spawnCloud(mkPlayer('A', { x: 3, y: 10 }, 0), 3, room);
-    run(tick([c], room), 1);
-    expect(c.dir).toEqual({ x: 0, y: -1 });
-    expect(c.pos.y).toBeLessThan(8);
+  it('each bounce halves its damage and its remaining range', () => {
+    const room = { ...empty, walls: [rect(6, 0, 7, 20)] };
+    const c = spawnCloud(mkPlayer('A', { x: 4, y: 10 }, 0, { ...emptyStats(), duration: 10 }), 1, room);
+    const dps0 = c.dps, range0 = c.range;
+    const t = tick([c], room);
+    let bounced = false;
+    for (let i = 0; i < 300 && !bounced; i++) { t(); bounced = c.dir.x < 0; }
+    expect(bounced).toBe(true);
+    expect(c.dps).toBeCloseTo(dps0 / 2);
+    // the wall face is 6 - radius away from the start of the sweep; what was left of the range is halved
+    const atHit = c.travelled;
+    expect(c.range).toBeLessThan(range0);
+    expect(c.range - atHit).toBeLessThanOrEqual((range0 - atHit) / 2 + 0.11);
+    run(t, 10);
+    expect(c.travelled).toBeCloseTo(c.range, 5);
   });
-  it('grow zone enlarges once', () => {
-    const room: Room = { ...empty, zones: [{ kind: 'grow', center: { x: 5, y: 10 }, radius: 0.5 }] };
-    const g = spawnCloud(mkPlayer('A', { x: 3, y: 10 }, 0), 4, room);
-    const r0 = g.radius, d0 = g.dps;
-    run(tick([g], room), 1);
-    expect(g.radius).toBeCloseTo(r0 * 1.5);
-    expect(g.dps).toBeCloseTo(d0 * 1.3);
-  });
-  it('shrink zone shrinks', () => {
-    const room: Room = { ...empty, zones: [{ kind: 'shrink', center: { x: 5, y: 10 }, radius: 0.5 }] };
-    const g = spawnCloud(mkPlayer('A', { x: 3, y: 10 }, 0), 4, room);
-    const r0 = g.radius;
-    run(tick([g], room), 1);
-    expect(g.radius).toBeCloseTo(r0 * 0.6);
-  });
-  it('redirect zone turns the cloud', () => {
-    const room: Room = { ...empty, zones: [{ kind: 'redirect', center: { x: 5, y: 10 }, radius: 0.5, turn: Math.PI / 2 }] };
-    const g = spawnCloud(mkPlayer('A', { x: 3, y: 10 }, 0), 4, room);
-    run(tick([g], room), 1);
-    expect(g.dir.x).toBeCloseTo(0);
-    expect(g.dir.y).toBeCloseTo(1);
+  it('two bounces quarter the damage', () => {
+    const room = { ...empty, walls: [rect(6, 0, 6.3, 20), rect(2, 0, 2.3, 20)] };
+    const c = spawnCloud(mkPlayer('A', { x: 4, y: 10 }, 0, { ...emptyStats(), range: 10, duration: 10 }), 1, room);
+    const dps0 = c.dps;
+    let flips = 0, last = c.dir.x;
+    const t = tick([c], room);
+    for (let i = 0; i < 600 && flips < 2; i++) { t(); if (Math.sign(c.dir.x) !== Math.sign(last)) { flips++; last = c.dir.x; } }
+    expect(flips).toBe(2);
+    expect(c.dps).toBeCloseTo(dps0 / 4);
   });
   it('stronger gas survives a clash with reduced damage', () => {
     const strong = spawnCloud(mkPlayer('A', { x: 2, y: 10 }, 0, { ...emptyStats(), power: 6 }), 5, empty);

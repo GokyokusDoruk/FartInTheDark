@@ -29,7 +29,7 @@ Telefon (iOS + Android) için tasarlanmış, ayrıca **dorukplays.com**'da taray
 
 - Oyun mantığı **2 boyutlu** (düz zemin, yukarıdan bakış); karakterler ve oda **3 boyutlu** görünür, kamera yukarıdan çapraz bakar. Dikey ekran.
 - Karakterler yumuşak hatlı, absürt çöp adamlar (kapsül/kürelerden prosedürel — Claude'un kararı; ileride gerçek modelle değiştirilebilir).
-- Pırtlarken karakter **domalır**; gaz popodan çıkar, yani karakterin yüzünün baktığı yönün **tersine** gider. Sağ analog popo doğrultusunu (= gazın gideceği yönü) belirler. Ekranda sağ analog çevrilince gazın gideceği yön kısa bir okla gösterilir. **Fener gazın gideceği yöne bakar** (Claude'un önerisi; kullanıcı yanıtlamadan "task task yap" dedi, değiştirilebilir) — böylece oyuncu atışının çarpacağı duvarları/boruları görüp sektirmeli atış planlayabilir.
+- Pırtlarken karakter **domalır**; gaz popodan çıkar, yani karakterin yüzünün baktığı yönün **tersine** gider. Sağ analog popo doğrultusunu (= gazın gideceği yönü) belirler. Ekranda sağ analog çevrilince gazın gideceği yön kısa bir okla gösterilir. **Fener gazın gideceği yöne bakar** (Claude'un önerisi; kullanıcı yanıtlamadan "task task yap" dedi, değiştirilebilir) — böylece oyuncu atışının çarpacağı duvarları görüp sektirmeli atış planlayabilir.
 - Gazı bitince karakter ayağa kalkar ve **sırıtarak** bekler.
 - Zehirlendikçe **yüz rengi** değişir: normal ten → yeşil → mor (can azaldıkça). Ölünce absürt şekilde devrilir.
 - Her karakterin başının üstünde **can barı** ve kalan can sayısı; bar can azaldıkça yeşilden kırmızıya döner.
@@ -82,21 +82,17 @@ Seviye 0'da da kullanılabilir bir gaz olmalı (taban değerler). Seviye başın
 ### 4.2 Davranış
 - Gaz **2 boyutlu düzlemde** düz bir doğrultuda ilerler (parabol/yükseklik yok).
 - Rakibe çarptığında **durmaz**, yoluna devam eder; birden çok kişiyi zehirleyebilir.
-- Oyuncu **kendi gazından** zehirlenmez (sekme/boru ile geri dönse bile).
-- **Duvara çarparsa** fiziksel olarak doğru açıyla seker.
+- Oyuncu **kendi gazından** zehirlenmez (sekip geri dönse bile).
+- **Duvara çarparsa** fiziksel olarak doğru açıyla seker; her sekmede hasarı ve kalan menzili yarıya iner.
 - **Gaz–gaz çarpışması:** gücü yüksek olan devam eder, düşük olan orada biter. Zayıf gazın gücü, güçlü gazın **hasarını** oranlı olarak azaltır. (Formül builder'a; öneri: `yeniHasar = hasar × (1 − zayıfGüç / güçlüGüç × k)`.) Güçler eşitse ikisi de biter.
 - Bir oyuncu aynı anda birden çok buluttan hasar alabilir; ölüm sırası tick bazında belirlenir.
 
 ## 5. Harita / oda
 
-- Dikdörtgen (ya da basit çokgen) bir oda; dış duvarlar + iç eşyalar.
-- Eşya türleri:
-  - **Duvar / engel:** gaz geçemez, seker. Oyuncu da geçemez.
-  - **U borusu (metal boru):** bir ağızdan giren gazı başka bir ağızdan, başka yöne çıkarır.
-  - **Büyütücü bölge:** içinden geçen gazı büyütür (kalınlık/hasar artar).
-  - **Küçültücü bölge:** gazı küçültür.
-  - **Yön değiştirici:** gazın yönünü belirli bir açıyla çevirir.
-- Her tur için oda **rastgele üretilir** ya da hazır şablonlardan seçilip eşyalar rastgele dağıtılır (builder'ın kararı; adil ve oynanabilir olmalı — doğuş noktaları engelle kapanmamalı).
+- **(2026-11-24 güncellemesi, kullanıcının isteği)** Harita bir kat planıdır: dikdörtgen alan düz, ince duvarlarla 3–5 **odaya** bölünür; her bölme duvarında en az bir **kapı** boşluğu vardır, bütün odalar birbirine bağlıdır.
+- **Duvar:** gaz ve oyuncu geçemez. Gaz duvardan seker, ama **her sekmede hasarı ve kalan menzili %50 azalır.**
+- Gazın yönünü değiştiren eşya **yoktur**: U boruları, yön değiştirici, büyütücü ve küçültücü bölgeler kaldırıldı (büyütücü/küçültücü için kullanıcı yanıt vermedi; sade harita Claude'un kararı).
+- Her tur için oda rastgele üretilir (doğuş noktaları duvar içinde olmaz, odalar arası yol hep açıktır).
 - Her hamlede oda oyuncuların altında rastgele açıyla döner ve az miktarda daralır.
 
 ## 6. Modlar ve çok oyunculu

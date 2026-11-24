@@ -246,6 +246,8 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
         acc -= DT;
       }
       localAim = controls.aim() ?? localAim;
+      const mv = controls.move();
+      setPose(me, Math.hypot(mv.x, mv.y) > 0.1 && steps < DARK_SECONDS * TICK_HZ ? 'walk' : 'idle');
       const a = actors.get(me)!;
       a.view.group.position.copy(toW(localPos));
       a.view.setFacing(localAim + Math.PI);
@@ -350,7 +352,6 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
     if (phase === 'dark') updateDark(dt);
     else if (phase === 'reveal') updateReveal(dt);
     for (const a of actors.values()) { a.poseT += dt; a.view.setPose(a.pose, a.poseT); }
-    roomGroup?.traverse(o => { if (o.userData.spin) o.rotation.y += dt * 1.5; });
   };
   const frame = (now: number) => {
     if (disposed) return;
@@ -361,7 +362,7 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
     raf = requestAnimationFrame(frame);
   };
   // dev-only hook so automated checks can drive the game while the tab is hidden
-  if (import.meta.env.DEV) (window as any).__fitd = { advance, view: () => cur, phase: () => phase, me: () => me };
+  if (import.meta.env.DEV) (window as any).__fitd = { advance, view: () => cur, phase: () => phase, me: () => me, gs, actors };
 
   function destroy() {
     if (disposed) return;

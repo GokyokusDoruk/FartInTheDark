@@ -3,7 +3,6 @@ import type { Poly, Room } from '@fitd/sim';
 import { toW } from './scene';
 
 const WALL_H = 1;
-const ZONE_COLORS = { grow: 0x7bd36b, shrink: 0x4aa3ff, redirect: 0xff9a3c } as const;
 
 function polyShape(poly: Poly): THREE.Shape {
   const s = new THREE.Shape();
@@ -61,50 +60,6 @@ export function buildRoom(room: Room): THREE.Group {
     group.add(top);
   }
 
-  const metal = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, metalness: 0.85, roughness: 0.25 });
-  for (const p of room.pipes) {
-    const a = toW(p.inlet), c = toW(p.outlet);
-    const mid = a.clone().add(c).multiplyScalar(0.5);
-    const h = 1.2 + a.distanceTo(c) * 0.12;
-    const curve = new THREE.CatmullRomCurve3([
-      a.clone().setY(0.3), a.clone().setY(h * 0.8), mid.clone().setY(h), c.clone().setY(h * 0.8), c.clone().setY(0.3),
-    ]);
-    group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.16, 12, false), metal));
-    for (const [pt, color] of [[a, 0x050505], [c, 0x050505]] as const) {
-      const mouth = new THREE.Mesh(new THREE.CylinderGeometry(p.radius, p.radius, 0.3, 24, 1, true), metal);
-      mouth.position.copy(pt).setY(0.15);
-      group.add(mouth);
-      const hole = new THREE.Mesh(new THREE.CircleGeometry(p.radius * 0.9, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color }));
-      hole.position.copy(pt).setY(0.29);
-      group.add(hole);
-    }
-    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 12), new THREE.MeshStandardMaterial({ color: 0xff5a5f }));
-    arrow.rotation.z = -Math.PI / 2;
-    arrow.rotation.y = -Math.atan2(p.outDir.y, p.outDir.x);
-    arrow.position.copy(c).add(new THREE.Vector3(p.outDir.x, 0, p.outDir.y).multiplyScalar(p.radius + 0.3)).setY(0.15);
-    group.add(arrow);
-  }
-
-  for (const z of room.zones) {
-    const color = ZONE_COLORS[z.kind];
-    const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(z.radius, 40).rotateX(-Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25, transparent: true, opacity: 0.55 }),
-    );
-    disc.position.copy(toW(z.center, 0.01));
-    group.add(disc);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(z.radius * 0.92, z.radius, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6 }));
-    ring.position.copy(toW(z.center, 0.015));
-    group.add(ring);
-    const icon = new THREE.Mesh(
-      z.kind === 'redirect' ? new THREE.ConeGeometry(0.22, 0.5, 3) : new THREE.SphereGeometry(z.kind === 'grow' ? 0.28 : 0.14, 16, 12),
-      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4 }),
-    );
-    icon.position.copy(toW(z.center, 0.35));
-    if (z.kind === 'redirect') { icon.rotation.z = -Math.PI / 2; icon.rotation.y = -(z.turn ?? 0); }
-    icon.userData.spin = true;
-    group.add(icon);
-  }
   return group;
 }
 
