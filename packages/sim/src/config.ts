@@ -29,9 +29,10 @@ export interface GasParams {
 
 /** Balance curves. All tuning lives here. */
 export function gasParams(s: Stats): GasParams {
-  const dps = 35 + 6 * s.damage;
+  // narrow streak: it only hurts what it actually touches, so a hit is short and has to hurt
+  const dps = 80 + 10 * s.damage;
   return {
-    radius: 0.7 + 0.1 * s.thickness,
+    radius: 0.12 + 0.04 * s.thickness,
     range: 5 + 1 * s.range,
     dps,
     power: 1 + s.power,
