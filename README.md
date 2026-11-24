@@ -80,13 +80,13 @@ dorukplays.com'daki diğer oyunlar gibi bu oyun da kendi alt alan adında yayın
 
 Sunucu, dorukplays.com'un bulunduğu Cloudflare hesabında `fitd-server` adlı bir Worker'dır ve `fitd-server.dorukplays.com` adresinden çalışır. Ücretsiz planda çalışır (Durable Objects, SQLite).
 
-İlk kez (bir defa):
+**Otomatik yayın:** Worker, Cloudflare Workers Builds ile bu repoya bağlı. `main`'e gelen ve `apps/server/` ya da `packages/` altında değişiklik içeren her commit sunucuyu kendiliğinden yayınlar (derleme: `npm install`, yayın: `npm -w apps/server run deploy`). Yalnız istemciyi değiştiren commit'ler sunucuyu yeniden başlatmaz, böylece süren online maçlar kopmaz. Site (Pages) zaten her commit'te kendiliğinden güncellenir.
+
+Elle yayınlamak gerekirse:
 
 ```powershell
 npx -w apps/server wrangler login
 ```
-
-Yayınla (sunucu kodu her değiştiğinde tekrar):
 
 ```powershell
 npm -w apps/server run deploy

@@ -1,3 +1,5 @@
+// Deployed automatically by Cloudflare Workers Builds on every push to main that touches
+// apps/server/ or packages/ (build: npm install, deploy: npm -w apps/server run deploy).
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "fitd-server",
