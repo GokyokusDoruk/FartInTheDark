@@ -81,7 +81,7 @@ Seviye 0'da da kullanılabilir bir gaz olmalı (taban değerler). Seviye başın
 
 ### 4.2 Davranış
 - Gaz **2 boyutlu düzlemde** düz bir doğrultuda ilerler (parabol/yükseklik yok).
-- **(2026-11-24, kullanıcının isteği)** Gaz mermi gibi düz, ince bir iz olarak görünür ve **yalnızca çizildiği genişlik kadar** alana hasar verir (genişlik = kalınlık özelliği). Bu yüzden çarpışma da sadece gerçekten değen gazlar arasında olur. Saçılma, yanlara küçük mermiler fırlatır.
+- **(2026-11-24, kullanıcının isteği)** Gaz mermi gibi düz, ince bir iz olarak görünür ve **yalnızca çizildiği genişlik kadar** alana hasar verir (genişlik = kalınlık özelliği). Bu yüzden çarpışma da sadece gerçekten değen gazlar arasında olur. Saçılma, yanlara küçük mermiler fırlatır. Gaz mermi hızında (10 m/s) ve sabit hızla gider, menzili 10–25 m; duvardan hız kaybetmeden seker (her sekmede hasarı ve kalan menzili yine yarıya iner). Durduğu yerde, süre özelliği kadar asılı kalıp sızar.
 - Rakibe çarptığında **durmaz**, yoluna devam eder; birden çok kişiyi zehirleyebilir.
 - Oyuncu **kendi gazından** zehirlenmez (sekip geri dönse bile).
 - **Duvara çarparsa** fiziksel olarak doğru açıyla seker; her sekmede hasarı ve kalan menzili yarıya iner.

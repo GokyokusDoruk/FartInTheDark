@@ -30,7 +30,8 @@ describe('narrow gas', () => {
     const A = mkPlayer('A', { x: 2, y: 10 }, 0), B = mkPlayer('B', { x: 12, y: 10.6 }, Math.PI);
     const cs: Cloud[] = [spawnCloud(A, 1), spawnCloud(B, 2)];
     const rng = createRng(1);
-    run(() => stepGas(cs, [], empty, [A, B], rng, DT), 1.5);
+    // they pass each other after ~0.4 s; stop before either reaches a far wall and bounces back
+    run(() => stepGas(cs, [], empty, [A, B], rng, DT), 0.7);
     expect(cs.every(c => c.alive)).toBe(true);
   });
 

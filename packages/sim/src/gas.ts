@@ -1,10 +1,10 @@
 import type { Cloud, Particle, Player, Room, Vec2 } from './types';
 import type { Rng } from './rng';
-import { add, sub, scale, dist, fromAngle, v, reflect, segmentHitsPoly, pointInPoly } from './vec';
-import { gasParams, GAS_SPEED, PLAYER_RADIUS, CLASH_DAMPING, BOUNCE_DAMPING } from './config';
+import { add, sub, scale, dist, dot, fromAngle, v, reflect, segmentHitsPoly, pointInPoly } from './vec';
+import { gasParams, GAS_SPEED, PLAYER_RADIUS, CLASH_DAMPING, BOUNCE_DAMPING, DAMAGE_REF_SPEED } from './config';
 import { emptyStats } from './stats';
 
-export const PARTICLE_SPEED = 1.5;
+export const PARTICLE_SPEED = 4;
 export const PARTICLE_LIFE = 0.8;
 export const PARTICLE_RADIUS = 0.15;
 
@@ -38,15 +38,52 @@ function damage(room: Room, players: Player[], owner: string, pos: Vec2, r: numb
   }
 }
 
+/** Part of segment a→b (as t0..t1 in [0,1]) that lies within distance r of p, or null. */
+function insideSpan(a: Vec2, b: Vec2, p: Vec2, r: number): [number, number] | null {
+  const d = sub(b, a), f = sub(a, p);
+  const A = dot(d, d);
+  if (A < 1e-12) return dist(a, p) < r ? [0, 1] : null;
+  const B = 2 * dot(f, d), C = dot(f, f) - r * r;
+  const disc = B * B - 4 * A * C;
+  if (disc <= 0) return null;
+  const s = Math.sqrt(disc);
+  const t0 = Math.max(0, (-B - s) / (2 * A)), t1 = Math.min(1, (-B + s) / (2 * A));
+  return t1 > t0 ? [t0, t1] : null;
+}
+
+/** A moving bullet hurts by the distance it travels inside each player (frame-rate independent). */
+function damageAlong(room: Room, players: Player[], owner: string, path: Seg[], r: number) {
+  for (const pl of players) {
+    if (!pl.alive || pl.id === owner) continue;
+    let amount = 0;
+    for (const sg of path) {
+      const span = insideSpan(sg.a, sg.b, pl.pos, r + PLAYER_RADIUS);
+      if (!span) continue;
+      const mid = add(sg.a, scale(sub(sg.b, sg.a), (span[0] + span[1]) / 2));
+      if (wallBetween(room, mid, pl.pos)) continue;
+      amount += (sg.dps / DAMAGE_REF_SPEED) * dist(sg.a, sg.b) * (span[1] - span[0]);
+    }
+    if (amount > 0) {
+      pl.hp -= amount;
+      if (pl.hp <= 0) { pl.hp = 0; pl.alive = false; }
+    }
+  }
+}
+
+interface Seg { a: Vec2; b: Vec2; dps: number }
+
 /** Advances all gas by dt. Mutates clouds, particles and players in place. */
 export function stepGas(clouds: Cloud[], particles: Particle[], room: Room, players: Player[], rng: Rng, dt: number): void {
+  const paths = new Map<Cloud, Seg[]>();
   for (const c of clouds) {
     if (!c.alive) continue;
     c.age += dt;
     if (c.age >= c.life) { c.alive = false; continue; }
     const step = Math.min(GAS_SPEED * dt, c.range - c.travelled);
     if (step > 0) {
-      c.travelled += sweep(c, step, room);
+      const path: Seg[] = [];
+      c.travelled += sweep(c, step, room, path);
+      paths.set(c, path);
     }
     const g = gasParams(players.find(p => p.id === c.owner)?.stats ?? emptyStats());
     let n = g.particlesPerSec * dt;
@@ -60,8 +97,13 @@ export function stepGas(clouds: Cloud[], particles: Particle[], room: Room, play
       n -= 1;
     }
   }
-  clash(clouds, room);
-  for (const c of clouds) if (c.alive) damage(room, players, c.owner, c.pos, c.radius, c.dps * dt);
+  clash(clouds, room, paths);
+  for (const c of clouds) {
+    if (!c.alive) continue;
+    const path = paths.get(c);
+    if (path) damageAlong(room, players, c.owner, path, c.radius);
+    else damage(room, players, c.owner, c.pos, c.radius, c.dps * dt); // stopped: the gas hangs and seeps
+  }
   for (const p of particles) {
     if (!p.alive) continue;
     p.age += dt;
@@ -72,12 +114,24 @@ export function stepGas(clouds: Cloud[], particles: Particle[], room: Room, play
   }
 }
 
-/** Gas-vs-gas: stronger survives with reduced damage; equal power cancels both. */
-function clash(clouds: Cloud[], room: Room) {
+/** Closest the two clouds got during this tick (start→end of each path, straight), with where. */
+function closestApproach(a: Cloud, b: Cloud, pa?: Seg[], pb?: Seg[]): { d: number; pa: Vec2; pb: Vec2 } {
+  const a0 = pa?.length ? pa[0].a : a.pos, b0 = pb?.length ? pb[0].a : b.pos;
+  const da = sub(a.pos, a0), db = sub(b.pos, b0);
+  const w = sub(a0, b0), rel = sub(da, db);
+  const rr = dot(rel, rel);
+  const t = rr < 1e-12 ? 1 : Math.max(0, Math.min(1, -dot(w, rel) / rr));
+  const ca = add(a0, scale(da, t)), cb = add(b0, scale(db, t));
+  return { d: dist(ca, cb), pa: ca, pb: cb };
+}
+
+/** Gas-vs-gas: stronger survives with reduced damage; equal power cancels both. Swept, so fast bullets cannot slip past each other. */
+function clash(clouds: Cloud[], room: Room, paths: Map<Cloud, Seg[]>) {
   for (let i = 0; i < clouds.length; i++) for (let j = i + 1; j < clouds.length; j++) {
     const a = clouds[i], b = clouds[j];
     if (!a.alive || !b.alive || a.owner === b.owner) continue;
-    if (dist(a.pos, b.pos) >= a.radius + b.radius || wallBetween(room, a.pos, b.pos)) continue;
+    const near = closestApproach(a, b, paths.get(a), paths.get(b));
+    if (near.d >= a.radius + b.radius || wallBetween(room, near.pa, near.pb)) continue;
     if (a.power === b.power) { a.alive = false; b.alive = false; continue; }
     const [strong, weak] = a.power > b.power ? [a, b] : [b, a];
     weak.alive = false;
@@ -91,7 +145,7 @@ const EPS = 1e-4;
  * Moves the cloud centre `step` metres, bouncing off walls and bounds (max 3 bounces per step).
  * Every bounce halves the cloud's damage and what is left of its range.
  */
-function sweep(c: Cloud, step: number, room: Room): number {
+function sweep(c: Cloud, step: number, room: Room, path?: Seg[]): number {
   let left = step;
   let done = 0;
   for (let bounce = 0; bounce <= 3 && left > 0; bounce++) {
@@ -101,8 +155,9 @@ function sweep(c: Cloud, step: number, room: Room): number {
       const h = segmentHitsPoly(a, b, w, 'enter');
       if (h && (!hit || h.t < hit.t)) hit = h;
     }
-    if (!hit) { c.pos = b; return done + left; }
+    if (!hit) { path?.push({ a, b, dps: c.dps }); c.pos = b; return done + left; }
     c.pos = add(add(a, scale(sub(b, a), hit.t)), scale(hit.normal, EPS));
+    path?.push({ a, b: c.pos, dps: c.dps });
     c.dir = reflect(c.dir, hit.normal);
     const moved = left * hit.t;
     done += moved;

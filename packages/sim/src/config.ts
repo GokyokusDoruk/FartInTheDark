@@ -10,7 +10,11 @@ export const SKILL_SECONDS = 15;
 export const DARK_SECONDS = 5;
 export const MOVE_SPEED = 3; // m/s
 export const PLAYER_RADIUS = 0.35;
-export const GAS_SPEED = 3; // m/s
+/** Gas flies like a bullet: fast and at a constant speed. */
+export const GAS_SPEED = 10; // m/s
+/** A moving bullet deals `dps / DAMAGE_REF_SPEED` per metre it travels through a player, so a
+ *  hit hurts the same as it did when gas drifted at 3 m/s; a stopped cloud seeps at plain `dps`. */
+export const DAMAGE_REF_SPEED = 3;
 export const FLASHLIGHT_RANGE = 1; // m
 export const SHRINK_PER_MOVE = 0.98;
 /** Each wall bounce multiplies damage and the remaining range by this. */
@@ -33,10 +37,11 @@ export function gasParams(s: Stats): GasParams {
   const dps = 80 + 10 * s.damage;
   return {
     radius: 0.12 + 0.04 * s.thickness,
-    range: 5 + 1 * s.range,
+    range: 10 + 1.5 * s.range,
     dps,
     power: 1 + s.power,
-    life: 2 + 0.3 * s.duration,
+    // flight time + how long the gas hangs where it stops
+    life: (10 + 1.5 * s.range) / GAS_SPEED + 0.5 + 0.3 * s.duration,
     particlesPerSec: 1.5 * s.scatter,
     particleDps: 0.4 * dps,
   };
