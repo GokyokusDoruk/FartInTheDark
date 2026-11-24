@@ -17,6 +17,7 @@ import { createHud, showRoundEnd, showMatchEnd } from '../ui/hud';
 import { T } from '../ui/strings';
 import type { Transport } from '../net/transport';
 import { blocksGame, overlayKey } from './linkState';
+import { flashlightAngle } from './flashlight';
 
 const SPECTATOR_DARK = 1.5;
 type ClientPhase = 'wait' | 'skills' | 'dark' | 'reveal' | 'idle';
@@ -251,7 +252,7 @@ export function runGame(ui: HTMLElement, gs: GameScene, transport: Transport, cb
       const a = actors.get(me)!;
       a.view.group.position.copy(toW(localPos));
       a.view.setFacing(localAim + Math.PI);
-      gs.setFlashlight(true, localPos, localAim);
+      gs.setFlashlight(true, localPos, flashlightAngle(localAim));
       arrow.visible = true;
       arrow.position.copy(toW(localPos, 0.03));
       arrow.rotation.y = -localAim;

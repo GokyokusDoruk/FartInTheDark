@@ -29,7 +29,7 @@ Telefon (iOS + Android) için tasarlanmış, ayrıca **dorukplays.com**'da taray
 
 - Oyun mantığı **2 boyutlu** (düz zemin, yukarıdan bakış); karakterler ve oda **3 boyutlu** görünür, kamera yukarıdan çapraz bakar. Dikey ekran.
 - Karakterler yumuşak hatlı, absürt çöp adamlar (kapsül/kürelerden prosedürel — Claude'un kararı; ileride gerçek modelle değiştirilebilir).
-- Pırtlarken karakter **domalır**; gaz popodan çıkar, yani karakterin yüzünün baktığı yönün **tersine** gider. Sağ analog popo doğrultusunu (= gazın gideceği yönü) belirler. Ekranda sağ analog çevrilince gazın gideceği yön kısa bir okla gösterilir. **Fener gazın gideceği yöne bakar** (Claude'un önerisi; kullanıcı yanıtlamadan "task task yap" dedi, değiştirilebilir) — böylece oyuncu atışının çarpacağı duvarları görüp sektirmeli atış planlayabilir.
+- Pırtlarken karakter **domalır**; gaz popodan çıkar, yani karakterin yüzünün baktığı yönün **tersine** gider. Sağ analog popo doğrultusunu (= gazın gideceği yönü) belirler. Ekranda sağ analog çevrilince gazın gideceği yön kısa bir okla gösterilir. **Fener karakterin önüne tutulur** (2026-11-24, kullanıcının isteği): karakterin baktığı yönü, yani gazın tersini aydınlatır.
 - Gazı bitince karakter ayağa kalkar ve **sırıtarak** bekler.
 - Zehirlendikçe **yüz rengi** değişir: normal ten → yeşil → mor (can azaldıkça). Ölünce absürt şekilde devrilir.
 - Her karakterin başının üstünde **can barı** ve kalan can sayısı; bar can azaldıkça yeşilden kırmızıya döner.
@@ -55,7 +55,7 @@ Telefon (iOS + Android) için tasarlanmış, ayrıca **dorukplays.com**'da taray
 2. **Karanlık evre (5 sn):**
    - Oda, oyuncuların **altında** rastgele bir açıyla döner ve biraz **daralır** (az miktarda; her hamle).
    - Döndükten sonra duvar/eşya içinde kalan oyuncu en yakın boş noktaya itilir. Daralan alanın dışında kalan oyuncu en yakın geçerli noktaya taşınır.
-   - Oda zifiri karanlıktır. Görünen tek şey: odanın dış duvarları + oyuncunun nişan yönünde ~1 metrelik **fener** koni/ışığı. Fener **sadece haritayı** gösterir; rakipler fenerde görünmez.
+   - Oda zifiri karanlıktır. Görünen tek şey: odanın dış duvarları + oyuncunun önünde (baktığı yönde) ~1 metrelik **fener** koni/ışığı. Fener **sadece haritayı** gösterir; rakipler fenerde görünmez.
    - Diğer oyuncuları görmek mümkün değildir (hayalet, iz vb. yok).
    - **Sol analog:** normal yürüme (hız sınırlı; 5 sn'de ne kadar gidilirse). **Sağ analog:** pırtlama yönü (360°).
 3. **Açılış ve atış:** Süre bitince ışıklar yanar, herkes görünür, herkes domalır ve **aynı anda otomatik** pırtlar.
